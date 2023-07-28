@@ -34,15 +34,6 @@ IPAddress ip(192, 168, 1, 177);
 // (port 80 is default for HTTP):
 EthernetServer server(80);
 
-
-//byte ip[] = {192, 168, 2, 222};
-//byte mac[] = {0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC};
-
-// Initialize the Ethernet server library
-// with the IP address and port you want to use
-// (port 80 is default for HTTP):
-EthernetServer server(80);
-
 void setup() {
   // You can use Ethernet.init(pin) to configure the CS pin
   //Ethernet.init(10);  // Most Arduino shields
@@ -71,7 +62,15 @@ void setup() {
   }
   if (Ethernet.linkStatus() == LinkOFF) {
     Serial.println("Ethernet cable is not connected.");
+  } 
+    else {
+      Serial.println("Test message");
+
+
   }
+
+
+  Serial.println("Test message 2");
 
   // start the server
   server.begin();
