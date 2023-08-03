@@ -15,13 +15,21 @@ This example may be copied under the terms of the MIT license, see the LICENSE f
 #include <NativeEthernet.h>
 #include <NativeEthernetUdp.h>
 #include <SPI.h>
+
+#include <OctoWS2811.h>
 #include <Adafruit_NeoPixel.h>
 
 // Neopixel settings
-const int numLeds = 232; // change for your setup
-const int numberOfChannels = numLeds * 3; // Total number of channels you want to receive (1 led = 3 channels)
-const byte dataPin = 2;
-Adafruit_NeoPixel leds = Adafruit_NeoPixel(numLeds, dataPin, NEO_GRB + NEO_KHZ800);
+const int ledsPerStrip = 120;
+const int number_of_strips = 4;
+DMAMEM int displayMemory[ledsPerStrip*6];
+int drawingMemory[ledsPerStrip*6];
+const int config = WS2811_GRB | WS2811_800kHz;
+OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
+
+const int numberOfChannels = ledsPerStrip * number_of_strips * 3; // Total number of channels you want to receive (1 led = 3 channels)
+//const byte dataPin = 2;
+//Adafruit_NeoPixel leds = Adafruit_NeoPixel(numLeds, dataPin, NEO_GRB + NEO_KHZ800);
 
 // Artnet settings
 Artnet artnet;
