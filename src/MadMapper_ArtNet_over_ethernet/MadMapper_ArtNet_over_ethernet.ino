@@ -18,7 +18,7 @@ https://github.com/CaseyJScalf/Teensy-4.1-as-ArtNet-Node-for-5v-WS2812-LED/tree/
 
 
 // LED strip settings
-const int ledsPerStrip = 120;
+const int ledsPerStrip = 60;
 const byte numStrips= 4; // change for your setup
 const int numLeds = ledsPerStrip * numStrips;
 const int numberOfChannels = numLeds * 3; // Total number of channels you want to receive (1 led = 3 channels)
@@ -46,6 +46,7 @@ const int maxUniverses = numberOfChannels / 512 + ((numberOfChannels % 512) ? 1 
 bool universesReceived[maxUniverses];
 bool sendFrame = 1;
 int previousDataLength = 0;
+char buffer[40];
 
 // Change ip and mac address for your setup
 byte ip[] = { 192, 168, 1, 177 };
@@ -64,12 +65,13 @@ void setup() {
 
   Serial.println("ArtNet initializing...");
 
-  /*
+  
   leds.begin();
   Serial.println("Led strips initializing...");
   Serial.println("Number of pixels in setup is:");
   Serial.println(leds.numPixels());
   leds.show();
+  /*
   Serial.println("Led strips test program is starting");
   initTest();
 
@@ -78,22 +80,60 @@ void setup() {
   //Serial.println("Hello, ArtNet Node Starting... Lalala");
 
 
+    */
 
   // this will be called for each packet received
+  artnet.setArtDmxCallback(onDmxFrame_simplified);
   //artnet.setArtDmxCallback(onDmxFrame);
-  */
+  
+  
 }
 
 void loop() {
 
   // we call the read function inside the loop
 
-  //artnet.read();
+  //test_LEDs();
+
+  artnet.read();
+  //delay(2000);
+  //artnet.printPacketHeader();
+  //artnet.read_alt();
   //Serial.println("Reading Artnet");
 }
 
 
-/*
+void onDmxFrame_simplified(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data) {
+  Serial.println("Universe number:");
+  Serial.println(universe);
+  Serial.println("Packet Length");
+  Serial.println(length);
+  
+ // read universe and put into the right part of the display buffer
+  for (int i = 0; i < length / 3; i++)
+  {
+    
+    
+    int led = i + (universe - startUniverse) * ledsPerStrip;
+    //Serial.println(led);
+    
+    if (i < ledsPerStrip)
+        {
+    //          sprintf(buffer, "LED number is %d", led);
+    //Serial.println(buffer);
+    //sprintf(buffer, "Color is: (%d, %d, %d )", data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+    //Serial.println(buffer);
+
+      leds.setPixel(led, data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
+        }
+  }
+  leds.show();
+  //delay(10000);
+  //previousDataLength = length;
+  
+}
+
+
 void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data) {
 
   Serial.println("Received callback...");
@@ -124,8 +164,9 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
  // read universe and put into the right part of the display buffer
   for (int i = 0; i < length / 3; i++)
   {
-    int led = i + (universe - startUniverse) * (previousDataLength / 3);
-    if (led < numLeds)
+    int led = i + (universe - startUniverse) * ledsPerStrip;
+    //int led = i + (universe - startUniverse) * (previousDataLength / 3);
+    if (led < ledsPerStrip)
       leds.setPixel(led, data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
   }
   previousDataLength = length;
@@ -138,7 +179,6 @@ void onDmxFrame(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* d
   }
 }
 
-*/
 
 void initTest() {
   int microsec = 2000000 / leds.numPixels();
@@ -158,3 +198,23 @@ void colorWipe(int color, int wait) {
     delayMicroseconds(wait);
   }
 }
+
+
+void test_LEDs()
+  {
+    //wipe everything black
+    for (int i = 0; i < leds.numPixels(); i++)
+      {leds.setPixel(i, 0, 0, 0);}
+    leds.show();
+ 
+    
+    for (int i = 0; i < leds.numPixels(); i++)
+    {
+       leds.setPixel(i, 200, 0, 0);
+       leds.show();
+       delay(50);
+      }
+
+  }
+    
+    
