@@ -18,8 +18,8 @@ https://github.com/CaseyJScalf/Teensy-4.1-as-ArtNet-Node-for-5v-WS2812-LED/tree/
 
 
 // LED strip settings
-const int ledsPerStrip = 60;
-const byte numStrips= 4; // change for your setup
+const int ledsPerStrip = 35;
+const byte numStrips= 8; // change for your setup
 const int numLeds = ledsPerStrip * numStrips;
 const int numberOfChannels = numLeds * 3; // Total number of channels you want to receive (1 led = 3 channels)
 
