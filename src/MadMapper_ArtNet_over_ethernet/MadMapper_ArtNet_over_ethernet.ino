@@ -24,8 +24,8 @@ const int numLeds = ledsPerStrip * numStrips;
 const int numberOfChannels = numLeds * 3; // Total number of channels you want to receive (1 led = 3 channels)
 
 
-DMAMEM int displayMemory[ledsPerStrip*6];
-int drawingMemory[ledsPerStrip*6];
+DMAMEM int displayMemory[ledsPerStrip*8];
+int drawingMemory[ledsPerStrip*8];
 const int config = WS2811_GRB | WS2811_800kHz;
 OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
 
