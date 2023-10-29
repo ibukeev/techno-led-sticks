@@ -23,7 +23,7 @@ byte mac[] = {
 };
 IPAddress ip(192, 168, 1, 177);
 
-unsigned int localPort = 8889;      // local port to listen on
+unsigned int localPort = 8888;      // local port to listen on
 
 // buffers for receiving and sending data
 char packetBuffer[UDP_TX_PACKET_MAX_SIZE];  // buffer to hold incoming packet,
