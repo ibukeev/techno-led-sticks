@@ -27,7 +27,7 @@
 byte mac[] = {
   0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
 };
-IPAddress ip(192, 168, 1, 177);
+IPAddress ip(192, 168, 1, 156);
 
 // Initialize the Ethernet server library
 // with the IP address and port you want to use
@@ -129,4 +129,3 @@ void loop() {
     Serial.println("client disconnected");
   }
 }
-

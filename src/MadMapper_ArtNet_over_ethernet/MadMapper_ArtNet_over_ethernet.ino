@@ -10,6 +10,9 @@ https://github.com/CaseyJScalf/Teensy-4.1-as-ArtNet-Node-for-5v-WS2812-LED/tree/
 
 
 #include <Artnet.h>
+#include <Wire.h>  
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 //#include <Ethernet.h>
 //#include <NativeEthernet.h>
 //#include <NativeEthernetUdp.h>
@@ -21,23 +24,55 @@ https://github.com/CaseyJScalf/Teensy-4.1-as-ArtNet-Node-for-5v-WS2812-LED/tree/
 #include <ArduinoJson.h>
 
 
+//Test run definitions. Could remove later if needed
+#define RED 0xFF0000
+#define GREEN 0x00FF00
+#define BLUE 0x0000FF
+#define YELLOW 0xFFFF00
+#define PINK 0xFF1088
+#define ORANGE 0xE05800
+#define WHITE 0xFFFFFF
+#define HTTP_CONNECTION_INTERVALS 2000
+#define DMX_CHECK_INTERVALS 1000
 
 
+
+//Defining OLED screen parameters
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET -1    // Reset pin # (or -1 if sharing Arduino reset pin)
+
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+String OLED_message = "";
+
+
+int frame_number = 0;
+unsigned long last_frame_TS = 0;
+
+//Defining networking parameters of the ESP32 orchestrating controller running Google Home IoT
 char serverAddress[] = "192.168.1.25";  // server address
 int port = 80;
 EthernetClient Ethclient;
 HttpClient client = HttpClient(Ethclient, serverAddress, port);
 
 
-// LED strip settings
+// Definint LED sticks parameters
 const int ledsPerStrip = 35;
 const byte numStrips= 8; // change for your setup
 const int numLeds = ledsPerStrip * numStrips;
 const int numberOfChannels = numLeds * 3; // Total number of channels you want to receive (1 led = 3 channels)
+
+DMAMEM int displayMemory[ledsPerStrip*8];
+int drawingMemory[ledsPerStrip*8];
+const int config = WS2811_GRB | WS2811_800kHz;
+OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
+
+//Defining parameters controlling frequency of data pull from orchestrating controller
 unsigned long reference_time_HTTP;
 unsigned long reference_time_DMX;
 
-bool ambient_mode = true;
+//Defining Ambient colors controlled via Google Home
+bool ambient_mode = false;
 
 struct {
   uint8_t red = 0;
@@ -47,51 +82,66 @@ struct {
   
   } ambient_color;
 
-DMAMEM int displayMemory[ledsPerStrip*8];
-int drawingMemory[ledsPerStrip*8];
-const int config = WS2811_GRB | WS2811_800kHz;
-OctoWS2811 leds(ledsPerStrip, displayMemory, drawingMemory, config);
-
-#define RED 0xFF0000
-#define GREEN 0x00FF00
-#define BLUE 0x0000FF
-#define YELLOW 0xFFFF00
-#define PINK 0xFF1088
-#define ORANGE 0xE05800
-#define WHITE 0xFFFFFF
-#define HTTP_CONNECTION_INTERVALS 2000
-#define DMX_CHECK_INTERVALS 500
-
-// Artnet settings
+// Defining Artnet settings
 Artnet artnet;
 const int startUniverse = 0;  // CHANGE FOR YOUR SETUP most software this is 1, some software send out artnet first universe as 0.
-
-// Check if we got all universes
 const int maxUniverses = numberOfChannels / 512 + ((numberOfChannels % 512) ? 1 : 0);
 bool universesReceived[maxUniverses];
 bool sendFrame = 1;
 int previousDataLength = 0;
 char buffer[40];
 
-// Change ip and mac address for your setup
-byte ip[] = { 192, 168, 1, 177 };
+// Defining Teensy Networking settings
+byte ip[] = { 192, 168, 0, 123 };
 byte broadcast[] = {192, 168, 1, 255};
 byte mac[] = { 0x04, 0xE9, 0xE5, 0x00, 0x69, 0xEC };
 
 
-
+// Helper variable to handle first run of Teensy controller after the restart. 
 bool first_run = true;
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial.println("Test is running");
-  //artnet.setBroadcast(broadcast);
-  artnet.begin(mac, ip);
-  Serial.println(Ethernet.localIP());
-  
 
-  Serial.println("ArtNet initializing...");
+  //Initializing the OLED DIsplay  
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
+    Serial.println(F("SSD1306 allocation failed"));
+  }
+  
+  display.display(); // Show initial display buffer contents on the screen
+  delay(2000);       // Pause for 2 seconds
+  display.clearDisplay(); // Clear the buffer  
+
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,1);
+  
+  String OLED_message =  "Attempting to connect to the Ethernet...";
+  display.println(OLED_message);
+  Serial.println(OLED_message);
+  display.display(); // Show updated display
+
+  display.clearDisplay(); // Clear the buffer
+  display.setCursor(0,1);
+  delay(1000);
+  
+  artnet.begin(mac, ip);
+
+  OLED_message =  "IP address:";
+  display.println(OLED_message);
+  Serial.println(OLED_message);
+  display.println(Ethernet.localIP());
+  Serial.println(Ethernet.localIP());
+
+  OLED_message =  "Led strips initializing...";
+  Serial.println("");
+  Serial.println(OLED_message);
+  display.println(OLED_message);
+
+  display.display(); // Show updated display
+  display.clearDisplay(); // Clear the buffer
+  display.setCursor(0,1);
+  delay(2000);
 
   /*
   if (client.connect(server, 80)) {
@@ -109,26 +159,17 @@ void setup() {
   
   
   leds.begin();
-  Serial.println("Led strips initializing...");
   Serial.println("Number of pixels in setup is:");
   Serial.println(leds.numPixels());
   leds.show();
   test_LEDs();
 
-
-
-  
-
-
   // this will be called for each packet received
   artnet.setArtDmxCallback(onDmxFrame_simplified);
-
 
   reference_time_HTTP = millis();
   reference_time_DMX = millis();
   //artnet.setArtDmxCallback(onDmxFrame);
-  
-  
 }
 
 
@@ -143,20 +184,48 @@ void loop() {
 
   if(millis() - reference_time_DMX > DMX_CHECK_INTERVALS)
         {
-          Serial.println("Pin 24 value:");
+          
           bool DMX_read = digitalRead(24);
-          Serial.println(DMX_read);
+          OLED_message =  "IP address:";
+          display.println(OLED_message);
+          display.println(Ethernet.localIP());
+          display.println("");
+          OLED_message =  "Control mode:";
+          Serial.println(OLED_message);
+          display.println(OLED_message);
+
+
+          //Debugging digital Pin read
+          //Serial.println("Pin 24 value:");
+          //Serial.println(DMX_read);
           
           if(DMX_read) {
-            ambient_mode = false;
-            Serial.println("Mode is DMX");
-            } else {ambient_mode = true;
-            Serial.println("Mode is Ambient");
+            
+            ambient_mode = true;
+            OLED_message = "Ambient (Google Home)";
+            Serial.println(OLED_message);
+            display.println(OLED_message);
+
+            //Serial.println("Mode is Ambient");
+            } else {ambient_mode = false;
+            //Serial.println("Mode is DMX");
+            
+            
+            OLED_message = "Artnet DMX";
+            Serial.println(OLED_message);
+            display.println(OLED_message);            
+            
+            
+            
             }
 
           SMTH_CHANGED = digitalRead(25);
-          Serial.println("Did smth change?");
-          Serial.println(SMTH_CHANGED);
+          //Serial.println("Did smth change?");
+          //Serial.println(SMTH_CHANGED);
+
+          display.display(); // Show updated display
+          display.clearDisplay(); // Clear the buffer
+          display.setCursor(0,1);
 
           reference_time_DMX = millis();
           
@@ -165,23 +234,29 @@ void loop() {
   //If we running DMX control
   if (!ambient_mode)
       {
+
+        //Serial.println("Reading Artnet");
         artnet.read();
+        //delay(500);
         }
 
         else 
 
-   {
+          {
 
-    //if(millis() - reference_time_HTTP > HTTP_CONNECTION_INTERVALS)
-    if(SMTH_CHANGED || first_run)
-            {   
-              call_ESP_Ethernet_and_make_adjustments();
-              }
-    }
+              //if(millis() - reference_time_HTTP > HTTP_CONNECTION_INTERVALS)
+              if(SMTH_CHANGED || first_run)
+                    {   
+
+
+                        call_ESP_Ethernet_and_make_adjustments();
+                    }
+          }
 
 
     first_run = false; 
 }
+
 
 
 void onDmxFrame_simplified(uint16_t universe, uint16_t length, uint8_t sequence, uint8_t* data) {
@@ -189,6 +264,25 @@ void onDmxFrame_simplified(uint16_t universe, uint16_t length, uint8_t sequence,
   Serial.println(universe);
   Serial.println("Packet Length");
   Serial.println(length);
+
+  if (universe == 1)
+      {
+        frame_number++;
+        unsigned long delta_frame_time = millis() - last_frame_TS;
+        last_frame_TS = millis();
+        if (frame_number%30 == 0 )
+          {
+            display.println("CUrrent frame 1 delta:");
+            display.println(delta_frame_time);
+            display.display(); // Show updated display
+            display.clearDisplay(); // Clear the buffer
+            display.setCursor(0,1);
+
+
+
+          }
+
+      }
   
  // read universe and put into the right part of the display buffer
   for (int i = 0; i < length / 3; i++)

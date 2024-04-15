@@ -32,8 +32,10 @@ THE SOFTWARE.
     #include <WiFiUdp.h>
 #else
     //#include <Ethernet.h>
+    //Changing Ethernet.h to NativeEthernet.h
     #include <NativeEthernet.h>
     //#include <EthernetUdp.h>
+    //Changing EthernetUdp.h to NativeEthernetUdp.h
     #include <NativeEthernetUdp.h>
 #endif
 
